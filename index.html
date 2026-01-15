@@ -43,7 +43,7 @@
       const annee_id   = Number(document.getElementById("annee_id").value);
       const VALUE      = document.getElementById("value").checked;
 
-      const { error } = await supabase
+      const { error } = await supabaseClient
         .from("reseau_produit")
         .insert({ produit_id, reseau_id, annee_id, VALUE });
 
