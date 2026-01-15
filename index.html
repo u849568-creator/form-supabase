@@ -1,42 +1,59 @@
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Test Supabase</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+  <h2>Test reseau_produit</h2>
 
-<script>
-const supabaseUrl = "https://cmwpwpiougayrizofnru.supabase.co";
-const supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNtd3B3cGlvdWdheXJpem9mbnJ1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njc3ODQxMTUsImV4cCI6MjA4MzM2MDExNX0.wik4VvmF8oAasCZ6YZMbcrzaRKKYPMrYkZgb4en4E2A";
-const supabase = supabase.createClient(supabaseUrl, supabaseKey);
+  <div>
+    <input id="produit_id" type="number" placeholder="produit_id" />
+    <input id="reseau_id" type="number" placeholder="reseau_id" />
+    <input id="annee_id" type="number" placeholder="annee_id" />
+    <label><input id="value" type="checkbox" /> VALUE</label>
+    <button id="btnInsert">Insérer</button>
+  </div>
 
-// INSERT
-async function insertRow() {
-  const { error } = await supabase
-    .from("reseau_produit")
-    .insert({
-      produit_id: 123,
-      reseau_id: 1,
-      annee_id: 2026,
-      VALUE: true
-    });
+  <pre id="out" style="white-space:pre-wrap;background:#f6f6f6;padding:12px;border-radius:8px;"></pre>
 
-  if (error) alert(error.message);
-  else loadRows();
-}
+  <script>
+    const supabaseUrl = "https://cmwpwpiougayrizofnru.supabase.co";
+    const supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNtd3B3cGlvdWdheXJpem9mbnJ1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njc3ODQxMTUsImV4cCI6MjA4MzM2MDExNX0.wik4VvmF8oAasCZ6YZMbcrzaRKKYPMrYkZgb4en4E2A";
+    const supabase = supabase.createClient(supabaseUrl, supabaseKey);
 
-// SELECT
-async function loadRows() {
-  const { data, error } = await supabase
-    .from("reseau_produit")
-    .select("*")
-    .order("created_at", { ascending: false });
+    const out = document.getElementById("out");
 
-  console.log(data);
-}
+    async function load() {
+      const { data, error } = await supabase
+        .from("reseau_produit")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .limit(20);
 
-// UPDATE
-async function updateRow(id) {
-  const { error } = await supabase
-    .from("reseau_produit")
-    .update({ VALUE: false })
-    .eq("id", id);
+      if (error) out.textContent = "SELECT error: " + error.message;
+      else out.textContent = JSON.stringify(data, null, 2);
+    }
 
-  if (error) alert(error.message);
-}
-</script>
+    async function insertRow() {
+      const produit_id = Number(document.getElementById("produit_id").value);
+      const reseau_id  = Number(document.getElementById("reseau_id").value);
+      const annee_id   = Number(document.getElementById("annee_id").value);
+      const VALUE      = document.getElementById("value").checked;
+
+      const { error } = await supabase
+        .from("reseau_produit")
+        .insert({ produit_id, reseau_id, annee_id, VALUE });
+
+      if (error) alert("INSERT error: " + error.message);
+      else await load();
+    }
+
+    document.getElementById("btnInsert").addEventListener("click", insertRow);
+
+    load();
+  </script>
+</body>
+</html>
