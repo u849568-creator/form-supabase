@@ -40,7 +40,7 @@
 
   async function loadProduits() {
     const { data, error } = await db
-      .from("produits")
+      .from("PRODUITS")
       .select("id, EAN")
       .order("id", { ascending: false });
 
@@ -70,7 +70,7 @@
     if (!EAN) return alert("EAN obligatoire");
 
     const { error } = await db
-      .from("produits")
+      .from("PRODUITS")
       .insert({ EAN });
 
     if (error) alert(error.message);
@@ -82,7 +82,7 @@
 
   async function updateProduit(id, EAN) {
     const { error } = await db
-      .from("produits")
+      .from("PRODUITS")
       .update({ EAN })
       .eq("id", id);
 
@@ -93,7 +93,7 @@
     if (!confirm("Supprimer ce produit ?")) return;
 
     const { error } = await db
-      .from("produits")
+      .from("PRODUITS")
       .delete()
       .eq("id", id);
 
