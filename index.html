@@ -1,59 +1,108 @@
 <!doctype html>
 <html lang="fr">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Test Supabase</title>
+  <meta charset="utf-8">
+  <title>Gestion PRODUITS</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 20px; }
+    table { border-collapse: collapse; width: 100%; }
+    th, td { border: 1px solid #ddd; padding: 6px; text-align: center; }
+    th { background: #f3f3f3; }
+    input[type=text] { width: 160px; }
+    button { margin: 2px; }
+  </style>
 </head>
 <body>
-  <h2>Test reseau_produit</h2>
 
-  <div>
-    <input id="produit_id" type="number" placeholder="produit_id" />
-    <input id="reseau_id" type="number" placeholder="reseau_id" />
-    <input id="annee_id" type="number" placeholder="annee_id" />
-    <label><input id="value" type="checkbox" /> VALUE</label>
-    <button id="btnInsert">Insérer</button>
-  </div>
+<h2>📦 PRODUITS</h2>
 
-  <pre id="out" style="white-space:pre-wrap;background:#f6f6f6;padding:12px;border-radius:8px;"></pre>
+<h3>➕ Ajouter un produit</h3>
+<input id="ean" type="text" placeholder="EAN">
+<button onclick="addProduit()">Ajouter</button>
 
-  <script>
-    const supabaseUrl = "https://cmwpwpiougayrizofnru.supabase.co";
-    const supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNtd3B3cGlvdWdheXJpem9mbnJ1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njc3ODQxMTUsImV4cCI6MjA4MzM2MDExNX0.wik4VvmF8oAasCZ6YZMbcrzaRKKYPMrYkZgb4en4E2A";
-    const supabaseClient = supabase.createClient(supabaseUrl, supabaseKey);
+<h3>📋 Liste des produits</h3>
+<table>
+  <thead>
+    <tr>
+      <th>ID</th>
+      <th>EAN</th>
+      <th>Actions</th>
+    </tr>
+  </thead>
+  <tbody id="rows"></tbody>
+</table>
 
-    const out = document.getElementById("out");
+<script>
+  const supabaseUrl = "https://cmwpwpiougayrizofnru.supabase.co";
+  const supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNtd3B3cGlvdWdheXJpem9mbnJ1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njc3ODQxMTUsImV4cCI6MjA4MzM2MDExNX0.wik4VvmF8oAasCZ6YZMbcrzaRKKYPMrYkZgb4en4E2A";
+  const db = supabase.createClient(supabaseUrl, supabaseKey);
 
-    async function load() {
-      const { data, error } = await supabaseClient
-        .from("reseau_produit")
-        .select("*")
-        .order("created_at", { ascending: false })
-        .limit(20);
+  async function loadProduits() {
+    const { data, error } = await db
+      .from("produits")
+      .select("id, EAN")
+      .order("id", { ascending: false });
 
-      if (error) out.textContent = "SELECT error: " + error.message;
-      else out.textContent = JSON.stringify(data, null, 2);
+    if (error) return alert(error.message);
+
+    const tbody = document.getElementById("rows");
+    tbody.innerHTML = "";
+
+    data.forEach(p => {
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td>${p.id}</td>
+        <td>
+          <input type="text" value="${p.EAN}"
+            onchange="updateProduit(${p.id}, this.value)">
+        </td>
+        <td>
+          <button onclick="deleteProduit(${p.id})">🗑</button>
+        </td>
+      `;
+      tbody.appendChild(tr);
+    });
+  }
+
+  async function addProduit() {
+    const EAN = document.getElementById("ean").value.trim();
+    if (!EAN) return alert("EAN obligatoire");
+
+    const { error } = await db
+      .from("produits")
+      .insert({ EAN });
+
+    if (error) alert(error.message);
+    else {
+      document.getElementById("ean").value = "";
+      loadProduits();
     }
+  }
 
-    async function insertRow() {
-      const produit_id = Number(document.getElementById("produit_id").value);
-      const reseau_id  = Number(document.getElementById("reseau_id").value);
-      const annee_id   = Number(document.getElementById("annee_id").value);
-      const VALUE      = document.getElementById("value").checked;
+  async function updateProduit(id, EAN) {
+    const { error } = await db
+      .from("produits")
+      .update({ EAN })
+      .eq("id", id);
 
-      const { error } = await supabaseClient
-        .from("reseau_produit")
-        .insert({ produit_id, reseau_id, annee_id, VALUE });
+    if (error) alert(error.message);
+  }
 
-      if (error) alert("INSERT error: " + error.message);
-      else await load();
-    }
+  async function deleteProduit(id) {
+    if (!confirm("Supprimer ce produit ?")) return;
 
-    document.getElementById("btnInsert").addEventListener("click", insertRow);
+    const { error } = await db
+      .from("produits")
+      .delete()
+      .eq("id", id);
 
-    load();
-  </script>
+    if (error) alert(error.message);
+    else loadProduits();
+  }
+
+  loadProduits();
+</script>
+
 </body>
 </html>
