@@ -22,12 +22,12 @@
   <script>
     const supabaseUrl = "https://cmwpwpiougayrizofnru.supabase.co";
     const supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNtd3B3cGlvdWdheXJpem9mbnJ1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njc3ODQxMTUsImV4cCI6MjA4MzM2MDExNX0.wik4VvmF8oAasCZ6YZMbcrzaRKKYPMrYkZgb4en4E2A";
-    const supabase = supabase.createClient(supabaseUrl, supabaseKey);
+    const supabaseClient = supabase.createClient(supabaseUrl, supabaseKey);
 
     const out = document.getElementById("out");
 
     async function load() {
-      const { data, error } = await supabase
+      const { data, error } = await supabaseClient
         .from("reseau_produit")
         .select("*")
         .order("created_at", { ascending: false })
