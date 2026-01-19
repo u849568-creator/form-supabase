@@ -2,105 +2,103 @@
 <html lang="fr">
 <head>
   <meta charset="utf-8">
-  <title>Gestion PRODUITS</title>
+  <title>Accueil – Produits</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
     body { font-family: Arial, sans-serif; padding: 20px; }
+    h2 { margin-bottom: 10px; }
     table { border-collapse: collapse; width: 100%; }
-    th, td { border: 1px solid #ddd; padding: 6px; text-align: center; }
+    th, td { border: 1px solid #ddd; padding: 6px; }
     th { background: #f3f3f3; }
-    input[type=text] { width: 160px; }
-    button { margin: 2px; }
+    input { width: 100%; box-sizing: border-box; }
+    a { color: #0066cc; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .filters th { background: #fafafa; }
   </style>
 </head>
 <body>
 
-<h2>📦 PRODUITS</h2>
+<h2>📦 Produits</h2>
 
-<h3>➕ Ajouter un produit</h3>
-<input id="ean" type="text" placeholder="EAN">
-<button onclick="addProduit()">Ajouter</button>
-
-<h3>📋 Liste des produits</h3>
 <table>
   <thead>
+    <!-- Ligne filtres -->
+    <tr class="filters">
+      <th>
+        <input id="fEAN" placeholder="Rechercher EAN">
+      </th>
+      <th>
+        <input id="fLIBELLE" placeholder="Rechercher libellé">
+      </th>
+      <th>
+        <input id="fCODE_S" placeholder="Rechercher code fournisseur">
+      </th>
+    </tr>
+    <!-- En-têtes -->
     <tr>
-      <th>ID</th>
       <th>EAN</th>
-      <th>Actions</th>
+      <th>LIBELLÉ</th>
+      <th>CODE_S</th>
     </tr>
   </thead>
   <tbody id="rows"></tbody>
 </table>
 
 <script>
-  const supabaseUrl = "https://cmwpwpiougayrizofnru.supabase.co";
-  const supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNtd3B3cGlvdWdheXJpem9mbnJ1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njc3ODQxMTUsImV4cCI6MjA4MzM2MDExNX0.wik4VvmF8oAasCZ6YZMbcrzaRKKYPMrYkZgb4en4E2A";
+  /* =====================
+     Connexion Supabase
+     ===================== */
+  const supabaseUrl = "https://XXXX.supabase.co";
+  const supabaseKey = "ANON_PUBLIC_KEY";
   const db = supabase.createClient(supabaseUrl, supabaseKey);
 
+  const rows = document.getElementById("rows");
+
   async function loadProduits() {
-    const { data, error } = await db
+    let query = db
       .from("PRODUIT")
-      .select("id, EAN")
-      .order("id", { ascending: false });
+      .select('id, "EAN", "LIBELLE", "CODE_S"')
+      .order("id", { ascending: false })
+      .limit(20);
 
-    if (error) return alert(error.message);
+    if (fEAN.value) {
+      query = query.ilike("EAN", `%${fEAN.value}%`);
+    }
+    if (fLIBELLE.value) {
+      query = query.ilike("LIBELLE", `%${fLIBELLE.value}%`);
+    }
+    if (fCODE_S.value) {
+      query = query.ilike("CODE_S", `%${fCODE_S.value}%`);
+    }
 
-    const tbody = document.getElementById("rows");
-    tbody.innerHTML = "";
+    const { data, error } = await query;
+    if (error) {
+      alert(error.message);
+      return;
+    }
 
+    rows.innerHTML = "";
     data.forEach(p => {
       const tr = document.createElement("tr");
       tr.innerHTML = `
-        <td>${p.id}</td>
         <td>
-          <input type="text" value="${p.EAN}"
-            onchange="updateProduit(${p.id}, this.value)">
+          <a href="produit.html?id=${p.id}">
+            ${p.EAN ?? ""}
+          </a>
         </td>
-        <td>
-          <button onclick="deleteProduit(${p.id})">🗑</button>
-        </td>
+        <td>${p.LIBELLE ?? ""}</td>
+        <td>${p.CODE_S ?? ""}</td>
       `;
-      tbody.appendChild(tr);
+      rows.appendChild(tr);
     });
   }
 
-  async function addProduit() {
-    const EAN = document.getElementById("ean").value.trim();
-    if (!EAN) return alert("EAN obligatoire");
+  // Recharge à chaque saisie (simple et efficace en V1)
+  fEAN.oninput = loadProduits;
+  fLIBELLE.oninput = loadProduits;
+  fCODE_S.oninput = loadProduits;
 
-    const { error } = await db
-      .from("PRODUIT")
-      .insert({ EAN });
-
-    if (error) alert(error.message);
-    else {
-      document.getElementById("ean").value = "";
-      loadProduits();
-    }
-  }
-
-  async function updateProduit(id, EAN) {
-    const { error } = await db
-      .from("PRODUIT")
-      .update({ EAN })
-      .eq("id", id);
-
-    if (error) alert(error.message);
-  }
-
-  async function deleteProduit(id) {
-    if (!confirm("Supprimer ce produit ?")) return;
-
-    const { error } = await db
-      .from("PRODUIT")
-      .delete()
-      .eq("id", id);
-
-    if (error) alert(error.message);
-    else loadProduits();
-  }
-
+  // Chargement initial
   loadProduits();
 </script>
 
