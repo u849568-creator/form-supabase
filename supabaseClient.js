@@ -6,7 +6,7 @@ const supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS
 const db = supabase.createClient(supabaseUrl, supabaseKey);
 
 // Fonction utilitaire pour vérifier si l'utilisateur est connecté
-async function checkAuth(redirectTo = "login.html") {
+async function checkAuth(redirectTo = "index.html") {
   const { data: { session } } = await db.auth.getSession();
 
   if (!session) {
@@ -18,7 +18,7 @@ async function checkAuth(redirectTo = "login.html") {
 }
 
 // Fonction utilitaire pour se déconnecter
-async function logout(redirectTo = "login.html") {
+async function logout(redirectTo = "index.html") {
   await db.auth.signOut();
   window.location.href = redirectTo;
 }
