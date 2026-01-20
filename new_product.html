@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <title>Ajouter un produit</title>
+
+  <!-- Supabase + configuration centrale -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabaseClient.js"></script>
+
+  <style>
+    body { font-family: Arial, sans-serif; padding: 20px; }
+    h2 { margin-bottom: 10px; }
+    form { max-width: 520px; }
+    label { display: block; margin-top: 12px; font-weight: 600; }
+    input, select {
+      width: 100%;
+      padding: 8px;
+      margin-top: 6px;
+      box-sizing: border-box;
+    }
+    .actions {
+      display: flex;
+      gap: 10px;
+      margin-top: 16px;
+    }
+    button, a.button {
+      padding: 8px 14px;
+      background: #0066cc;
+      color: white;
+      border: none;
+      cursor: pointer;
+      border-radius: 4px;
+      text-decoration: none;
+      text-align: center;
+    }
+    button:hover, a.button:hover { background: #004999; }
+    .secondary {
+      background: #e6e6e6;
+      color: #333;
+    }
+    .secondary:hover { background: #cfcfcf; }
+    .message { margin-top: 12px; }
+    .top-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+  </style>
+</head>
+<body>
+
+<div class="top-bar">
+  <h2>➕ Ajouter un produit</h2>
+  <button onclick="logout()">Se déconnecter</button>
+</div>
+
+<form id="productForm">
+  <label for="ean">EAN</label>
+  <input id="ean" name="ean" type="text" required placeholder="Ex: 3700000000000" />
+
+  <label for="codeS">CODE_S</label>
+  <input id="codeS" name="codeS" type="text" required placeholder="Code fournisseur" />
+
+  <label for="libelle">LIBELLÉ</label>
+  <input id="libelle" name="libelle" type="text" required placeholder="Libellé du produit" />
+
+  <label for="typeMarque">TYPE_MARQUE</label>
+  <input id="typeMarque" name="typeMarque" type="text" required placeholder="Type / marque" />
+
+  <div class="actions">
+    <button type="submit">Enregistrer</button>
+    <a class="button secondary" href="landing.html">Retour</a>
+  </div>
+
+  <p id="message" class="message"></p>
+</form>
+
+<script>
+  const form = document.getElementById("productForm");
+  const message = document.getElementById("message");
+
+  async function initPage() {
+    const user = await checkAuth("index.html");
+    if (!user) return;
+  }
+
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    message.textContent = "";
+
+    const payload = {
+      EAN: document.getElementById("ean").value.trim(),
+      CODE_S: document.getElementById("codeS").value.trim(),
+      LIBELLE: document.getElementById("libelle").value.trim(),
+      TYPE_MARQUE: document.getElementById("typeMarque").value.trim(),
+    };
+
+    const { error } = await db.from("PRODUIT").insert(payload);
+
+    if (error) {
+      message.textContent = `Erreur : ${error.message}`;
+      message.style.color = "red";
+      return;
+    }
+
+    message.textContent = "Produit ajouté avec succès !";
+    message.style.color = "green";
+    form.reset();
+  });
+
+  initPage();
+</script>
+
+</body>
+</html>
