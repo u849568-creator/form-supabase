@@ -186,10 +186,10 @@
       CODE_S: document.getElementById("codeS").value.trim(),
       LIBELLE: document.getElementById("libelle").value.trim(),
       TYPE_MARQUE: document.getElementById("typeMarque").value.trim(),
-      CIRCANA_SECTEUR_ID: document.getElementById("circanaSecteur").value || null,
-      CIRCANA_FAMILLE_ID: document.getElementById("circanaFamille").value || null,
-      CIRCANA_SOUS_FAMILLE_ID: document.getElementById("circanaSousFamille").value || null,
-      CIRCANA_SEGMENT_ID: document.getElementById("circanaSegment").value || null,
+      MARCHE_CIRCANA_ID: document.getElementById("circanaMarche").value || null,
+      RAYON_CIRCANA_ID: document.getElementById("circanaRayon").value || null,
+      GROUPE_FAMILLE_CIRCANA_ID: document.getElementById("circanaSousGroupe").value || null,
+      CATEGORIE_CIRCANA_ID: document.getElementById("circanaCateg").value || null,
     };
 
     const { error } = await db.from("PRODUIT").insert(payload);
