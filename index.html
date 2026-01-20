@@ -3,7 +3,13 @@
 <head>
   <meta charset="UTF-8">
   <title>Connexion Supabase</title>
+
+  <!-- Librairie Supabase -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <!-- Client Supabase centralisé -->
+  <script src="supabaseClient.js"></script>
+
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -38,21 +44,22 @@
   <p id="message" style="color: red;"></p>
 
   <script>
-    const supabaseUrl = "https://cmwpwpiougayrizofnru.supabase.co";
-    const supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNtd3B3cGlvdWdheXJpem9mbnJ1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njc3ODQxMTUsImV4cCI6MjA4MzM2MDExNX0.wik4VvmF8oAasCZ6YZMbcrzaRKKYPMrYkZgb4en4E2A";
-    const db = supabase.createClient(supabaseUrl, supabaseKey);
-
     async function login() {
       const email = document.getElementById("email").value;
       const password = document.getElementById("password").value;
 
-      const { data, error } = await db.auth.signInWithPassword({ email, password });
+      const { error } = await db.auth.signInWithPassword({
+        email,
+        password
+      });
 
       if (error) {
-        document.getElementById("message").textContent = "Erreur : " + error.message;
+        document.getElementById("message").textContent =
+          "Erreur : " + error.message;
         return;
       }
 
+      // Connexion réussie → redirection
       window.location.href = "landing.html";
     }
   </script>
