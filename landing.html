@@ -6,7 +6,16 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
     body { font-family: Arial, sans-serif; padding: 20px; }
-    h2 { margin-bottom: 10px; }
+    h2 { margin-bottom: 10px; display: inline-block; }
+    .top-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .actions {
+      display: flex;
+      gap: 10px;
+    }
     table { border-collapse: collapse; width: 100%; }
     th, td { border: 1px solid #ddd; padding: 6px; }
     th { background: #f3f3f3; }
@@ -14,25 +23,36 @@
     a { color: #0066cc; text-decoration: none; }
     a:hover { text-decoration: underline; }
     .filters th { background: #fafafa; }
+    button {
+      padding: 6px 12px;
+      background: #0066cc;
+      color: white;
+      border: none;
+      cursor: pointer;
+      border-radius: 4px;
+    }
+    button:hover {
+      background: #004999;
+    }
   </style>
 </head>
 <body>
 
-<h2>📦 Produits</h2>
+<div class="top-bar">
+  <div>
+    <h2>📦 Produits</h2>
+    <button onclick="window.location.href='new_product.html'">Ajouter un produit</button>
+  </div>
+  <button onclick="logout()">Se déconnecter</button>
+</div>
 
 <table>
   <thead>
     <!-- Ligne filtres -->
     <tr class="filters">
-      <th>
-        <input id="fEAN" placeholder="Rechercher EAN">
-      </th>
-      <th>
-        <input id="fLIBELLE" placeholder="Rechercher libellé">
-      </th>
-      <th>
-        <input id="fCODE_S" placeholder="Rechercher code fournisseur">
-      </th>
+      <th><input id="fEAN" placeholder="Rechercher EAN"></th>
+      <th><input id="fLIBELLE" placeholder="Rechercher libellé"></th>
+      <th><input id="fCODE_S" placeholder="Rechercher code fournisseur"></th>
     </tr>
     <!-- En-têtes -->
     <tr>
@@ -45,16 +65,29 @@
 </table>
 
 <script>
-  /* =====================
-     Connexion Supabase
-     ===================== */
   const supabaseUrl = "https://cmwpwpiougayrizofnru.supabase.co";
   const supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNtd3B3cGlvdWdheXJpem9mbnJ1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njc3ODQxMTUsImV4cCI6MjA4MzM2MDExNX0.wik4VvmF8oAasCZ6YZMbcrzaRKKYPMrYkZgb4en4E2A";
   const db = supabase.createClient(supabaseUrl, supabaseKey);
 
   const rows = document.getElementById("rows");
+  const fEAN = document.getElementById("fEAN");
+  const fLIBELLE = document.getElementById("fLIBELLE");
+  const fCODE_S = document.getElementById("fCODE_S");
+
+  // Déconnexion
+  async function logout() {
+    await db.auth.signOut();
+    window.location.href = "login.html";
+  }
 
   async function loadProduits() {
+    const { data: { session } } = await db.auth.getSession();
+
+    if (!session) {
+      window.location.href = "login.html";
+      return;
+    }
+
     let query = db
       .from("PRODUIT")
       .select('id, "EAN", "LIBELLE", "CODE_S"')
@@ -81,11 +114,7 @@
     data.forEach(p => {
       const tr = document.createElement("tr");
       tr.innerHTML = `
-        <td>
-          <a href="produit.html?id=${p.id}">
-            ${p.EAN ?? ""}
-          </a>
-        </td>
+        <td><a href="produit.html?id=${p.id}">${p.EAN ?? ""}</a></td>
         <td>${p.LIBELLE ?? ""}</td>
         <td>${p.CODE_S ?? ""}</td>
       `;
@@ -93,12 +122,10 @@
     });
   }
 
-  // Recharge à chaque saisie (simple et efficace en V1)
   fEAN.oninput = loadProduits;
   fLIBELLE.oninput = loadProduits;
   fCODE_S.oninput = loadProduits;
 
-  // Chargement initial
   loadProduits();
 </script>
 
