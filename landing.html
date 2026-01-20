@@ -3,7 +3,11 @@
 <head>
   <meta charset="utf-8">
   <title>Accueil – Produits</title>
+
+  <!-- Supabase + configuration centrale -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabaseClient.js"></script>
+
   <style>
     body { font-family: Arial, sans-serif; padding: 20px; }
     h2 { margin-bottom: 10px; display: inline-block; }
@@ -48,13 +52,11 @@
 
 <table>
   <thead>
-    <!-- Ligne filtres -->
     <tr class="filters">
       <th><input id="fEAN" placeholder="Rechercher EAN"></th>
       <th><input id="fLIBELLE" placeholder="Rechercher libellé"></th>
       <th><input id="fCODE_S" placeholder="Rechercher code fournisseur"></th>
     </tr>
-    <!-- En-têtes -->
     <tr>
       <th>EAN</th>
       <th>LIBELLÉ</th>
@@ -65,28 +67,15 @@
 </table>
 
 <script>
-  const supabaseUrl = "https://cmwpwpiougayrizofnru.supabase.co";
-  const supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNtd3B3cGlvdWdheXJpem9mbnJ1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njc3ODQxMTUsImV4cCI6MjA4MzM2MDExNX0.wik4VvmF8oAasCZ6YZMbcrzaRKKYPMrYkZgb4en4E2A";
-  const db = supabase.createClient(supabaseUrl, supabaseKey);
-
   const rows = document.getElementById("rows");
   const fEAN = document.getElementById("fEAN");
   const fLIBELLE = document.getElementById("fLIBELLE");
   const fCODE_S = document.getElementById("fCODE_S");
 
-  // Déconnexion
-  async function logout() {
-    await db.auth.signOut();
-    window.location.href = "index.html";
-  }
-
   async function loadProduits() {
-    const { data: { session } } = await db.auth.getSession();
-
-    if (!session) {
-      window.location.href = "index.html";
-      return;
-    }
+    // Vérifie l'utilisateur connecté via le fichier partagé
+    const user = await checkAuth("index.html");
+    if (!user) return;
 
     let query = db
       .from("PRODUIT")
@@ -94,15 +83,9 @@
       .order("id", { ascending: false })
       .limit(20);
 
-    if (fEAN.value) {
-      query = query.ilike("EAN", `%${fEAN.value}%`);
-    }
-    if (fLIBELLE.value) {
-      query = query.ilike("LIBELLE", `%${fLIBELLE.value}%`);
-    }
-    if (fCODE_S.value) {
-      query = query.ilike("CODE_S", `%${fCODE_S.value}%`);
-    }
+    if (fEAN.value) query = query.ilike("EAN", `%${fEAN.value}%`);
+    if (fLIBELLE.value) query = query.ilike("LIBELLE", `%${fLIBELLE.value}%`);
+    if (fCODE_S.value) query = query.ilike("CODE_S", `%${fCODE_S.value}%`);
 
     const { data, error } = await query;
     if (error) {
@@ -126,6 +109,7 @@
   fLIBELLE.oninput = loadProduits;
   fCODE_S.oninput = loadProduits;
 
+  // Authentifie puis charge
   loadProduits();
 </script>
 
