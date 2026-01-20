@@ -11,7 +11,7 @@
   <style>
     body { font-family: Arial, sans-serif; padding: 20px; }
     h2 { margin-bottom: 10px; }
-    form { max-width: 520px; }
+    form { max-width: 720px; }
     label { display: block; margin-top: 12px; font-weight: 600; }
     input, select {
       width: 100%;
@@ -46,6 +46,22 @@
       justify-content: space-between;
       align-items: center;
     }
+    .section {
+      margin-top: 20px;
+      padding: 16px;
+      border: 1px solid #e3e3e3;
+      border-radius: 6px;
+      background: #fafafa;
+    }
+    .section h3 {
+      margin: 0 0 8px;
+      font-size: 1rem;
+    }
+    .grid {
+      display: grid;
+      gap: 12px;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    }
   </style>
 </head>
 <body>
@@ -56,21 +72,64 @@
 </div>
 
 <form id="productForm">
-  <label for="ean">EAN</label>
-  <input id="ean" name="ean" type="text" required placeholder="Ex: 3700000000000" />
+  <section class="section">
+    <h3>Informations produit</h3>
+    <div class="grid">
+      <div>
+        <label for="ean">EAN</label>
+        <input id="ean" name="ean" type="text" required placeholder="Ex: 3700000000000" />
+      </div>
 
-  <label for="codeS">CODE_S</label>
-  <input id="codeS" name="codeS" type="text" required placeholder="Code fournisseur" />
+      <div>
+        <label for="codeS">CODE_S</label>
+        <input id="codeS" name="codeS" type="text" required placeholder="Code fournisseur" />
+      </div>
 
-  <label for="libelle">LIBELLÉ</label>
-  <input id="libelle" name="libelle" type="text" required placeholder="Libellé du produit" />
+      <div>
+        <label for="libelle">LIBELLÉ</label>
+        <input id="libelle" name="libelle" type="text" required placeholder="Libellé du produit" />
+      </div>
 
-  <label for="typeMarque">TYPE_MARQUE</label>
-  <select id="typeMarque" name="typeMarque" required>
-    <option value="" disabled selected>Choisir un type</option>
-    <option value="MN">MN</option>
-    <option value="MDD">MDD</option>
-  </select>
+      <div>
+        <label for="typeMarque">TYPE_MARQUE</label>
+        <select id="typeMarque" name="typeMarque" required>
+          <option value="" disabled selected>Choisir un type</option>
+          <option value="MARQUE">MARQUE</option>
+          <option value="MDD">MDD</option>
+        </select>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <h3>Nomenclature Circana</h3>
+    <div class="grid">
+      <div>
+        <label for="circanaSecteur">Secteur</label>
+        <select id="circanaSecteur" name="circanaSecteur" data-table="CIRCANA_SECTEUR" data-label="LIBELLE" data-value="id">
+          <option value="" disabled selected>Choisir un secteur</option>
+        </select>
+      </div>
+      <div>
+        <label for="circanaFamille">Famille</label>
+        <select id="circanaFamille" name="circanaFamille" data-table="CIRCANA_FAMILLE" data-label="LIBELLE" data-value="id">
+          <option value="" disabled selected>Choisir une famille</option>
+        </select>
+      </div>
+      <div>
+        <label for="circanaSousFamille">Sous-famille</label>
+        <select id="circanaSousFamille" name="circanaSousFamille" data-table="CIRCANA_SOUS_FAMILLE" data-label="LIBELLE" data-value="id">
+          <option value="" disabled selected>Choisir une sous-famille</option>
+        </select>
+      </div>
+      <div>
+        <label for="circanaSegment">Segment</label>
+        <select id="circanaSegment" name="circanaSegment" data-table="CIRCANA_SEGMENT" data-label="LIBELLE" data-value="id">
+          <option value="" disabled selected>Choisir un segment</option>
+        </select>
+      </div>
+    </div>
+  </section>
 
   <div class="actions">
     <button type="submit">Enregistrer</button>
@@ -83,6 +142,35 @@
 <script>
   const form = document.getElementById("productForm");
   const message = document.getElementById("message");
+  const nomenclatureSelects = Array.from(
+    document.querySelectorAll("select[data-table]")
+  );
+
+  async function loadNomenclatureOptions() {
+    for (const select of nomenclatureSelects) {
+      const table = select.dataset.table;
+      const labelField = select.dataset.label;
+      const valueField = select.dataset.value;
+
+      const { data, error } = await db
+        .from(table)
+        .select(`${valueField}, ${labelField}`)
+        .order(labelField, { ascending: true });
+
+      if (error) {
+        message.textContent = `Erreur : ${error.message}`;
+        message.style.color = "red";
+        continue;
+      }
+
+      data.forEach((item) => {
+        const option = document.createElement("option");
+        option.value = item[valueField];
+        option.textContent = item[labelField];
+        select.appendChild(option);
+      });
+    }
+  }
 
   async function initPage() {
     const user = await checkAuth("index.html");
@@ -98,6 +186,10 @@
       CODE_S: document.getElementById("codeS").value.trim(),
       LIBELLE: document.getElementById("libelle").value.trim(),
       TYPE_MARQUE: document.getElementById("typeMarque").value.trim(),
+      CIRCANA_SECTEUR_ID: document.getElementById("circanaSecteur").value || null,
+      CIRCANA_FAMILLE_ID: document.getElementById("circanaFamille").value || null,
+      CIRCANA_SOUS_FAMILLE_ID: document.getElementById("circanaSousFamille").value || null,
+      CIRCANA_SEGMENT_ID: document.getElementById("circanaSegment").value || null,
     };
 
     const { error } = await db.from("PRODUIT").insert(payload);
@@ -114,6 +206,7 @@
   });
 
   initPage();
+  loadNomenclatureOptions();
 </script>
 
 </body>
