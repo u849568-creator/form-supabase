@@ -4,13 +4,12 @@
   <meta charset="utf-8">
   <title>Accueil – Produits</title>
 
-  <!-- Supabase + configuration centrale -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabaseClient.js"></script>
 
   <style>
     body { font-family: Arial, sans-serif; padding: 20px; }
-    h2 { margin-bottom: 10px; display: inline-block; }
+    h2 { margin-bottom: 10px; }
     .top-bar {
       display: flex;
       justify-content: space-between;
@@ -69,34 +68,28 @@ const fLIBELLE = document.getElementById("fLIBELLE");
 const fCODE_S = document.getElementById("fCODE_S");
 
 /* =========================
-   VOLET PAF (Années x Réseaux)
+   VOLET PAF – MATRICE
    ========================= */
 async function toggleDetails(productId, tr) {
   const next = tr.nextElementSibling;
-
-  // fermer si déjà ouvert
   if (next && next.classList.contains("details")) {
     next.remove();
     return;
   }
-
-  // fermer les autres
   document.querySelectorAll("tr.details").forEach(r => r.remove());
 
-  // requête PAF
   const { data, error } = await db
     .from("PAF")
     .select(`
-      ANNEE : annee_id (
-        ANNEE
-        ),
       REFERENCEMENT,
       RESEAU:reseau_id (
         RESEAU
+      ),
+      ANNEE:annee_id (
+        ANNEE
       )
     `)
-    .eq("produit_id", productId)
-    .order("annee_id", { ascending: false });
+    .eq("produit_id", productId);
 
   if (error) {
     alert(error.message);
@@ -104,24 +97,34 @@ async function toggleDetails(productId, tr) {
   }
 
   if (!data || data.length === 0) {
-    const emptyRow = document.createElement("tr");
-    emptyRow.className = "details";
-    emptyRow.innerHTML = `<td colspan="3">Aucune donnée PAF</td>`;
-    tr.after(emptyRow);
+    const r = document.createElement("tr");
+    r.className = "details";
+    r.innerHTML = `<td colspan="3">Aucune donnée PAF</td>`;
+    tr.after(r);
     return;
   }
 
-  // listes uniques
-  const reseaux = [...new Set(data.map(d => d.RESEAU?.LIBELLE))];
-  const annees = [...new Set(data.map(d => d.ANNEE))].sort((a,b) => b-a);
+  // Réseaux (colonnes)
+  const reseaux = [...new Set(
+    data.map(d => d.RESEAU?.LIBELLE).filter(Boolean)
+  )];
 
-  // indexation
+  // Années (lignes, desc)
+  const annees = [...new Set(
+    data.map(d => d.ANNEE?.ANNEE)
+  )].sort((a, b) => b - a);
+
+  // Indexation
   const map = {};
   data.forEach(d => {
-    map[`${d.ANNEE}_${d.RESEAU?.LIBELLE}`] = d.REFERENCEMENT;
+    const annee = d.ANNEE?.ANNEE;
+    const reseau = d.RESEAU?.LIBELLE;
+    if (annee && reseau) {
+      map[`${annee}_${reseau}`] = d.REFERENCEMENT;
+    }
   });
 
-  // construction tableau
+  // Construction HTML
   let html = `<table style="width:100%;border-collapse:collapse">`;
   html += `<tr><th>Année</th>`;
   reseaux.forEach(r => html += `<th>${r}</th>`);
@@ -144,7 +147,6 @@ async function toggleDetails(productId, tr) {
       <div class="details-content">${html}</div>
     </td>
   `;
-
   tr.after(detailsRow);
 }
 
