@@ -93,11 +93,16 @@ tr.details { background: #fafafa; }
   document.querySelectorAll("tr.details").forEach(r => r.remove());
 
   // Charge infos PAF
-  const { data, error } = await db
-    .from("PAF")
-    .select('"RESEAU","REFERENCEMENT"')
-    .eq("produit_id", productId)
-    .single();
+const { data, error } = await db
+  .from("PAF")
+  .select(`
+    REFERENCEMENT,
+    RESEAU (
+      LIBELLE
+    )
+  `)
+  .eq("produit_id", productId)
+  .single();
 
   if (error) {
     alert(error.message);
