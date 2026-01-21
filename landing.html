@@ -87,10 +87,12 @@ async function toggleDetails(productId, tr) {
   const { data, error } = await db
     .from("PAF")
     .select(`
-      ANNEE,
+      ANNEE : annee_id (
+        ANNEE
+        ),
       REFERENCEMENT,
       RESEAU:reseau_id (
-        LIBELLE
+        RESEAU
       )
     `)
     .eq("produit_id", productId)
