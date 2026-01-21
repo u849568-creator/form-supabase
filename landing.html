@@ -106,7 +106,7 @@ async function toggleDetails(productId, tr) {
 
   // Réseaux (colonnes)
   const reseaux = [...new Set(
-    data.map(d => d.RESEAU?.LIBELLE).filter(Boolean)
+    data.map(d => d.RESEAU?.RESEAU).filter(Boolean)
   )];
 
   // Années (lignes, desc)
@@ -118,7 +118,7 @@ async function toggleDetails(productId, tr) {
   const map = {};
   data.forEach(d => {
     const annee = d.ANNEE?.ANNEE;
-    const reseau = d.RESEAU?.LIBELLE;
+    const reseau = d.RESEAU?.RESEAU;
     if (annee && reseau) {
       map[`${annee}_${reseau}`] = d.REFERENCEMENT;
     }
