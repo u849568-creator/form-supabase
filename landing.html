@@ -16,17 +16,10 @@
       justify-content: space-between;
       align-items: center;
     }
-    .actions {
-      display: flex;
-      gap: 10px;
-    }
     table { border-collapse: collapse; width: 100%; }
-    th, td { border: 1px solid #ddd; padding: 6px; }
+    th, td { border: 1px solid #ddd; padding: 6px; text-align: center; }
     th { background: #f3f3f3; }
     input { width: 100%; box-sizing: border-box; }
-    a { color: #0066cc; text-decoration: none; }
-    a:hover { text-decoration: underline; }
-    .filters th { background: #fafafa; }
     button {
       padding: 6px 12px;
       background: #0066cc;
@@ -35,19 +28,14 @@
       cursor: pointer;
       border-radius: 4px;
     }
-    button:hover {
-      background: #004999;
-    }
+    button:hover { background: #004999; }
 
     tr.expandable { cursor: pointer; }
-tr.details { background: #fafafa; }
-.details-content {
-  padding: 10px;
-  font-size: 14px;
-}
-    
+    tr.details { background: #fafafa; }
+    .details-content { padding: 10px; }
   </style>
 </head>
+
 <body>
 
 <div class="top-bar">
@@ -60,10 +48,10 @@ tr.details { background: #fafafa; }
 
 <table>
   <thead>
-    <tr class="filters">
-      <th><input id="fEAN" placeholder="Rechercher EAN"></th>
-      <th><input id="fLIBELLE" placeholder="Rechercher libellé"></th>
-      <th><input id="fCODE_S" placeholder="Rechercher code fournisseur"></th>
+    <tr>
+      <th><input id="fEAN" placeholder="EAN"></th>
+      <th><input id="fLIBELLE" placeholder="Libellé"></th>
+      <th><input id="fCODE_S" placeholder="Code fournisseur"></th>
     </tr>
     <tr>
       <th>EAN</th>
@@ -75,96 +63,131 @@ tr.details { background: #fafafa; }
 </table>
 
 <script>
-  const rows = document.getElementById("rows");
-  const fEAN = document.getElementById("fEAN");
-  const fLIBELLE = document.getElementById("fLIBELLE");
-  const fCODE_S = document.getElementById("fCODE_S");
+const rows = document.getElementById("rows");
+const fEAN = document.getElementById("fEAN");
+const fLIBELLE = document.getElementById("fLIBELLE");
+const fCODE_S = document.getElementById("fCODE_S");
 
-  async function toggleDetails(productId, tr) {
+/* =========================
+   VOLET PAF (Années x Réseaux)
+   ========================= */
+async function toggleDetails(productId, tr) {
   const next = tr.nextElementSibling;
 
-  // Si déjà ouvert → fermer
+  // fermer si déjà ouvert
   if (next && next.classList.contains("details")) {
     next.remove();
     return;
   }
 
-  // Ferme les autres volets ouverts
+  // fermer les autres
   document.querySelectorAll("tr.details").forEach(r => r.remove());
 
-  // Charge infos PAF
-const { data, error } = await db
-  .from("PAF")
-  .select(`
-    REFERENCEMENT,
-    RESEAU (
-      RESEAU
-    )
-  `)
-  .eq("produit_id", productId)
-  .single();
+  // requête PAF
+  const { data, error } = await db
+    .from("PAF")
+    .select(`
+      ANNEE,
+      REFERENCEMENT,
+      RESEAU:reseau_id (
+        LIBELLE
+      )
+    `)
+    .eq("produit_id", productId)
+    .order("ANNEE", { ascending: false });
 
   if (error) {
     alert(error.message);
     return;
   }
 
+  if (!data || data.length === 0) {
+    const emptyRow = document.createElement("tr");
+    emptyRow.className = "details";
+    emptyRow.innerHTML = `<td colspan="3">Aucune donnée PAF</td>`;
+    tr.after(emptyRow);
+    return;
+  }
+
+  // listes uniques
+  const reseaux = [...new Set(data.map(d => d.RESEAU?.LIBELLE))];
+  const annees = [...new Set(data.map(d => d.ANNEE))].sort((a,b) => b-a);
+
+  // indexation
+  const map = {};
+  data.forEach(d => {
+    map[`${d.ANNEE}_${d.RESEAU?.LIBELLE}`] = d.REFERENCEMENT;
+  });
+
+  // construction tableau
+  let html = `<table style="width:100%;border-collapse:collapse">`;
+  html += `<tr><th>Année</th>`;
+  reseaux.forEach(r => html += `<th>${r}</th>`);
+  html += `</tr>`;
+
+  annees.forEach(a => {
+    html += `<tr><td><strong>${a}</strong></td>`;
+    reseaux.forEach(r => {
+      html += `<td>${map[`${a}_${r}`] ?? "-"}</td>`;
+    });
+    html += `</tr>`;
+  });
+
+  html += `</table>`;
+
   const detailsRow = document.createElement("tr");
   detailsRow.className = "details";
   detailsRow.innerHTML = `
     <td colspan="3">
-      <div class="details-content">
-        <strong>Réseau :</strong> ${data.RESEAU ?? "-"}<br>
-        <strong>Référencement :</strong> ${data.REFERENCEMENT ?? "-"}
-      </div>
+      <div class="details-content">${html}</div>
     </td>
   `;
 
   tr.after(detailsRow);
 }
 
+/* =========================
+   LISTE PRODUITS
+   ========================= */
+async function loadProduits() {
+  const user = await checkAuth("index.html");
+  if (!user) return;
 
-  async function loadProduits() {
-    // Vérifie l'utilisateur connecté via le fichier partagé
-    const user = await checkAuth("index.html");
-    if (!user) return;
+  let query = db
+    .from("PRODUIT")
+    .select('id, "EAN", "LIBELLE", "CODE_S"')
+    .order("id", { ascending: false })
+    .limit(20);
 
-    let query = db
-      .from("PRODUIT")
-      .select('id, "EAN", "LIBELLE", "CODE_S"')
-      .order("id", { ascending: false })
-      .limit(20);
+  if (fEAN.value) query = query.ilike("EAN", `%${fEAN.value}%`);
+  if (fLIBELLE.value) query = query.ilike("LIBELLE", `%${fLIBELLE.value}%`);
+  if (fCODE_S.value) query = query.ilike("CODE_S", `%${fCODE_S.value}%`);
 
-    if (fEAN.value) query = query.ilike("EAN", `%${fEAN.value}%`);
-    if (fLIBELLE.value) query = query.ilike("LIBELLE", `%${fLIBELLE.value}%`);
-    if (fCODE_S.value) query = query.ilike("CODE_S", `%${fCODE_S.value}%`);
-
-    const { data, error } = await query;
-    if (error) {
-      alert(error.message);
-      return;
-    }
-
-    rows.innerHTML = "";
-data.forEach(p => {
-  const tr = document.createElement("tr");
-  tr.className = "expandable";
-  tr.innerHTML = `
-    <td>${p.EAN ?? ""}</td>
-    <td>${p.LIBELLE ?? ""}</td>
-    <td>${p.CODE_S ?? ""}</td>
-  `;
-  tr.onclick = () => toggleDetails(p.id, tr);
-  rows.appendChild(tr);
-});
+  const { data, error } = await query;
+  if (error) {
+    alert(error.message);
+    return;
   }
 
-  fEAN.oninput = loadProduits;
-  fLIBELLE.oninput = loadProduits;
-  fCODE_S.oninput = loadProduits;
+  rows.innerHTML = "";
+  data.forEach(p => {
+    const tr = document.createElement("tr");
+    tr.className = "expandable";
+    tr.innerHTML = `
+      <td>${p.EAN ?? ""}</td>
+      <td>${p.LIBELLE ?? ""}</td>
+      <td>${p.CODE_S ?? ""}</td>
+    `;
+    tr.onclick = () => toggleDetails(p.id, tr);
+    rows.appendChild(tr);
+  });
+}
 
-  // Authentifie puis charge
-  loadProduits();
+fEAN.oninput = loadProduits;
+fLIBELLE.oninput = loadProduits;
+fCODE_S.oninput = loadProduits;
+
+loadProduits();
 </script>
 
 </body>
