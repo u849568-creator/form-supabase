@@ -4,6 +4,7 @@
   <meta charset="utf-8">
   <title>Accueil – Produits</title>
 
+  <!-- Supabase -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabaseClient.js"></script>
 
@@ -16,9 +17,14 @@
       align-items: center;
     }
     table { border-collapse: collapse; width: 100%; }
-    th, td { border: 1px solid #ddd; padding: 6px; text-align: center; }
+    th, td {
+      border: 1px solid #ddd;
+      padding: 6px;
+      text-align: center;
+    }
     th { background: #f3f3f3; }
-    input { width: 100%; box-sizing: border-box; }
+    input[type="text"] { width: 100%; box-sizing: border-box; }
+
     button {
       padding: 6px 12px;
       background: #0066cc;
@@ -68,7 +74,25 @@ const fLIBELLE = document.getElementById("fLIBELLE");
 const fCODE_S = document.getElementById("fCODE_S");
 
 /* =========================
-   VOLET PAF – MATRICE
+   UPDATE REFERENCEMENT
+   ========================= */
+async function updateReferencement(produitId, reseauId, anneeId, value) {
+  const { error } = await db
+    .from("PAF")
+    .update({ REFERENCEMENT: value })
+    .match({
+      produit_id: produitId,
+      reseau_id: reseauId,
+      annee_id: anneeId
+    });
+
+  if (error) {
+    alert(error.message);
+  }
+}
+
+/* =========================
+   VOLET PAF (checkbox)
    ========================= */
 async function toggleDetails(productId, tr) {
   const next = tr.nextElementSibling;
@@ -82,12 +106,10 @@ async function toggleDetails(productId, tr) {
     .from("PAF")
     .select(`
       REFERENCEMENT,
-      RESEAU:reseau_id (
-        RESEAU
-      ),
-      ANNEE:annee_id (
-        ANNEE
-      )
+      reseau_id,
+      annee_id,
+      RESEAU:reseau_id ( RESEAU ),
+      ANNEE:annee_id ( ANNEE )
     `)
     .eq("produit_id", productId);
 
@@ -105,35 +127,39 @@ async function toggleDetails(productId, tr) {
   }
 
   // Réseaux (colonnes)
-  const reseaux = [...new Set(
-    data.map(d => d.RESEAU?.RESEAU).filter(Boolean)
-  )];
+  const reseaux = [...new Map(
+    data.map(d => [d.reseau_id, d.RESEAU?.RESEAU])
+  )].map(([id, label]) => ({ id, label }));
 
   // Années (lignes, desc)
-  const annees = [...new Set(
-    data.map(d => d.ANNEE?.ANNEE)
-  )].sort((a, b) => b - a);
+  const annees = [...new Map(
+    data.map(d => [d.annee_id, d.ANNEE?.ANNEE])
+  )].map(([id, annee]) => ({ id, annee }))
+    .sort((a, b) => b.annee - a.annee);
 
-  // Indexation
+  // Indexation valeur
   const map = {};
   data.forEach(d => {
-    const annee = d.ANNEE?.ANNEE;
-    const reseau = d.RESEAU?.RESEAU;
-    if (annee && reseau) {
-      map[`${annee}_${reseau}`] = d.REFERENCEMENT;
-    }
+    map[`${d.annee_id}_${d.reseau_id}`] = d.REFERENCEMENT;
   });
 
-  // Construction HTML
+  // Construction tableau
   let html = `<table style="width:100%;border-collapse:collapse">`;
   html += `<tr><th>Année</th>`;
-  reseaux.forEach(r => html += `<th>${r}</th>`);
+  reseaux.forEach(r => html += `<th>${r.label}</th>`);
   html += `</tr>`;
 
   annees.forEach(a => {
-    html += `<tr><td><strong>${a}</strong></td>`;
+    html += `<tr><td><strong>${a.annee}</strong></td>`;
     reseaux.forEach(r => {
-      html += `<td>${map[`${a}_${r}`] ?? "-"}</td>`;
+      const checked = map[`${a.id}_${r.id}`] ? "checked" : "";
+      html += `
+        <td>
+          <input type="checkbox"
+            ${checked}
+            onchange="updateReferencement(${productId}, ${r.id}, ${a.id}, this.checked)">
+        </td>
+      `;
     });
     html += `</tr>`;
   });
