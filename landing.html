@@ -96,7 +96,7 @@ async function toggleDetails(productId, tr) {
       )
     `)
     .eq("produit_id", productId)
-    .order("ANNEE", { ascending: false });
+    .order("annee_id", { ascending: false });
 
   if (error) {
     alert(error.message);
