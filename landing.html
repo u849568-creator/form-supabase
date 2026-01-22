@@ -1,99 +1,113 @@
 <!doctype html>
 <html lang="fr">
 <head>
-  <meta charset="utf-8">
-  <title>Accueil – Produits</title>
+<meta charset="utf-8">
+<title>Accueil – Produits</title>
 
-  <!-- Supabase -->
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="supabaseClient.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="supabaseClient.js"></script>
 
-  <style>
-    body { font-family: Arial, sans-serif; padding: 20px; }
-    h2 { margin-bottom: 10px; }
-    .top-bar {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-    table { border-collapse: collapse; width: 100%; }
-    th, td {
-      border: 1px solid #ddd;
-      padding: 6px;
-      text-align: center;
-    }
-    th { background: #f3f3f3; }
-    input[type="text"] { width: 100%; box-sizing: border-box; }
+<style>
+body { font-family: Arial, sans-serif; padding: 20px; }
+table { border-collapse: collapse; width: 100%; }
+th, td { border: 1px solid #ddd; padding: 6px; text-align: center; }
+th { background: #f3f3f3; }
+tr.expandable { cursor: pointer; }
+tr.details { background: #fafafa; }
 
-    button {
-      padding: 6px 12px;
-      background: #0066cc;
-      color: white;
-      border: none;
-      cursor: pointer;
-      border-radius: 4px;
-    }
-    button:hover { background: #004999; }
+.section {
+  margin-top: 12px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+.section-header {
+  background: #f3f3f3;
+  padding: 6px 10px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-weight: bold;
+}
+.section-content { padding: 10px; display: none; }
 
-    tr.expandable { cursor: pointer; }
-    tr.details { background: #fafafa; }
-    .details-content { padding: 10px; }
-  </style>
+textarea {
+  width: 100%;
+  min-height: 40px;
+}
+
+.actions {
+  margin-top: 10px;
+  display: flex;
+  gap: 10px;
+}
+.badge {
+  color: #b45309;
+  font-weight: bold;
+}
+button {
+  padding: 6px 12px;
+  background: #0066cc;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+button.secondary {
+  background: #aaa;
+}
+</style>
 </head>
 
 <body>
 
-<div class="top-bar">
-  <div>
-    <h2>📦 Produits</h2>
-    <button onclick="window.location.href='new_product.html'">Ajouter un produit</button>
-  </div>
-  <button onclick="logout()">Se déconnecter</button>
-</div>
+<h2>📦 Produits</h2>
 
 <table>
-  <thead>
-    <tr>
-      <th><input id="fEAN" placeholder="EAN"></th>
-      <th><input id="fLIBELLE" placeholder="Libellé"></th>
-      <th><input id="fCODE_S" placeholder="Code fournisseur"></th>
-    </tr>
-    <tr>
-      <th>EAN</th>
-      <th>LIBELLÉ</th>
-      <th>CODE_S</th>
-    </tr>
-  </thead>
-  <tbody id="rows"></tbody>
+<thead>
+<tr><th>EAN</th><th>LIBELLÉ</th><th>CODE_S</th></tr>
+</thead>
+<tbody id="rows"></tbody>
 </table>
 
 <script>
 const rows = document.getElementById("rows");
-const fEAN = document.getElementById("fEAN");
-const fLIBELLE = document.getElementById("fLIBELLE");
-const fCODE_S = document.getElementById("fCODE_S");
+const pending = {}; // buffer global
 
-/* =========================
-   UPDATE REFERENCEMENT
-   ========================= */
-async function updateReferencement(produitId, reseauId, anneeId, value) {
+function toggleSection(id) {
+  const el = document.getElementById(id);
+  el.style.display = el.style.display === "none" ? "block" : "none";
+}
+
+function markChange(key, payload) {
+  pending[key] = payload;
+  document.getElementById("pending-count").innerText =
+    Object.keys(pending).length + " modification(s) en attente";
+}
+
+async function saveChanges() {
+  const payload = Object.values(pending);
+  if (payload.length === 0) return alert("Aucun changement");
+
   const { error } = await db
     .from("PAF")
-    .update({ REFERENCEMENT: value })
-    .match({
-      produit_id: produitId,
-      reseau_id: reseauId,
-      annee_id: anneeId
-    });
+    .upsert(payload, { onConflict: "produit_id,reseau_id,annee_id" });
 
   if (error) {
     alert(error.message);
+    return;
   }
+
+  Object.keys(pending).forEach(k => delete pending[k]);
+  document.getElementById("pending-count").innerText = "";
+  alert("Changements enregistrés");
 }
 
-/* =========================
-   VOLET PAF (checkbox)
-   ========================= */
+function cancelChanges() {
+  Object.keys(pending).forEach(k => delete pending[k]);
+  document.getElementById("pending-count").innerText = "";
+  alert("Modifications annulées (rafraîchir pour recharger)");
+}
+
 async function toggleDetails(productId, tr) {
   const next = tr.nextElementSibling;
   if (next && next.classList.contains("details")) {
@@ -106,6 +120,7 @@ async function toggleDetails(productId, tr) {
     .from("PAF")
     .select(`
       REFERENCEMENT,
+      MODULATION,
       reseau_id,
       annee_id,
       RESEAU:reseau_id ( RESEAU ),
@@ -113,109 +128,115 @@ async function toggleDetails(productId, tr) {
     `)
     .eq("produit_id", productId);
 
-  if (error) {
-    alert(error.message);
-    return;
-  }
+  if (error) return alert(error.message);
 
-  if (!data || data.length === 0) {
-    const r = document.createElement("tr");
-    r.className = "details";
-    r.innerHTML = `<td colspan="3">Aucune donnée PAF</td>`;
-    tr.after(r);
-    return;
-  }
-
-  // Réseaux (colonnes)
   const reseaux = [...new Map(
-    data.map(d => [d.reseau_id, d.RESEAU?.RESEAU])
+    data.map(d => [d.reseau_id, d.RESEAU.RESEAU])
   )].map(([id, label]) => ({ id, label }));
 
-  // Années (lignes, desc)
   const annees = [...new Map(
-    data.map(d => [d.annee_id, d.ANNEE?.ANNEE])
+    data.map(d => [d.annee_id, d.ANNEE.ANNEE])
   )].map(([id, annee]) => ({ id, annee }))
-    .sort((a, b) => b.annee - a.annee);
+   .sort((a,b) => b.annee - a.annee);
 
-  // Indexation valeur
-  const map = {};
+  const refMap = {};
+  const modMap = {};
   data.forEach(d => {
-    map[`${d.annee_id}_${d.reseau_id}`] = d.REFERENCEMENT;
+    refMap[`${d.annee_id}_${d.reseau_id}`] = d.REFERENCEMENT;
+    modMap[`${d.annee_id}_${d.reseau_id}`] = d.MODULATION;
   });
 
-  // Construction tableau
-  let html = `<table style="width:100%;border-collapse:collapse">`;
-  html += `<tr><th>Année</th>`;
-  reseaux.forEach(r => html += `<th>${r.label}</th>`);
-  html += `</tr>`;
-
-  annees.forEach(a => {
-    html += `<tr><td><strong>${a.annee}</strong></td>`;
-    reseaux.forEach(r => {
-      const checked = map[`${a.id}_${r.id}`] ? "checked" : "";
-      html += `
-        <td>
-          <input type="checkbox"
-            ${checked}
-            onchange="updateReferencement(${productId}, ${r.id}, ${a.id}, this.checked)">
-        </td>
-      `;
-    });
+  function buildTable(type) {
+    let html = `<table><tr><th>Année</th>`;
+    reseaux.forEach(r => html += `<th>${r.label}</th>`);
     html += `</tr>`;
-  });
 
-  html += `</table>`;
+    annees.forEach(a => {
+      html += `<tr><td><strong>${a.annee}</strong></td>`;
+      reseaux.forEach(r => {
+        const key = `${productId}_${a.id}_${r.id}`;
+        const mapKey = `${a.id}_${r.id}`;
+
+        if (type === "ref") {
+          const checked = refMap[mapKey] ? "checked" : "";
+          html += `
+            <td>
+              <input type="checkbox" ${checked}
+                onchange="markChange('${key}', {
+                  produit_id:${productId},
+                  annee_id:${a.id},
+                  reseau_id:${r.id},
+                  REFERENCEMENT:this.checked
+                })">
+            </td>`;
+        } else {
+          html += `
+            <td>
+              <textarea
+                oninput="markChange('${key}', {
+                  produit_id:${productId},
+                  annee_id:${a.id},
+                  reseau_id:${r.id},
+                  MODULATION:this.value
+                })">${modMap[mapKey] ?? ""}</textarea>
+            </td>`;
+        }
+      });
+      html += `</tr>`;
+    });
+    return html + `</table>`;
+  }
 
   const detailsRow = document.createElement("tr");
   detailsRow.className = "details";
   detailsRow.innerHTML = `
     <td colspan="3">
-      <div class="details-content">${html}</div>
-    </td>
-  `;
+
+      <div class="section">
+        <div class="section-header">
+          Référencement
+          <button onclick="toggleSection('ref-${productId}')">Afficher / Réduire</button>
+        </div>
+        <div class="section-content" id="ref-${productId}">
+          ${buildTable("ref")}
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-header">
+          Diffusion
+          <button onclick="toggleSection('mod-${productId}')">Afficher / Réduire</button>
+        </div>
+        <div class="section-content" id="mod-${productId}">
+          ${buildTable("mod")}
+        </div>
+      </div>
+
+      <div class="actions">
+        <span id="pending-count" class="badge"></span>
+        <button onclick="saveChanges()">Valider</button>
+        <button class="secondary" onclick="cancelChanges()">Annuler</button>
+      </div>
+
+    </td>`;
   tr.after(detailsRow);
 }
 
-/* =========================
-   LISTE PRODUITS
-   ========================= */
 async function loadProduits() {
-  const user = await checkAuth("index.html");
-  if (!user) return;
-
-  let query = db
+  const { data } = await db
     .from("PRODUIT")
-    .select('id, "EAN", "LIBELLE", "CODE_S"')
-    .order("id", { ascending: false })
+    .select('id,"EAN","LIBELLE","CODE_S"')
     .limit(20);
-
-  if (fEAN.value) query = query.ilike("EAN", `%${fEAN.value}%`);
-  if (fLIBELLE.value) query = query.ilike("LIBELLE", `%${fLIBELLE.value}%`);
-  if (fCODE_S.value) query = query.ilike("CODE_S", `%${fCODE_S.value}%`);
-
-  const { data, error } = await query;
-  if (error) {
-    alert(error.message);
-    return;
-  }
 
   rows.innerHTML = "";
   data.forEach(p => {
     const tr = document.createElement("tr");
     tr.className = "expandable";
-    tr.innerHTML = `
-      <td>${p.EAN ?? ""}</td>
-      <td>${p.LIBELLE ?? ""}</td>
-      <td>${p.CODE_S ?? ""}</td>
-    `;
+    tr.innerHTML = `<td>${p.EAN}</td><td>${p.LIBELLE}</td><td>${p.CODE_S}</td>`;
     tr.onclick = () => toggleDetails(p.id, tr);
     rows.appendChild(tr);
   });
 }
-
-fEAN.oninput = loadProduits;
-fLIBELLE.oninput = loadProduits;
-fCODE_S.oninput = loadProduits;
 
 loadProduits();
 </script>
