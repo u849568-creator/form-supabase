@@ -75,7 +75,7 @@ textarea {
 
 <body>
 
-<!-- HEADER -->
+<!-- HEADER (inchangé) -->
 <div class="top-bar">
   <div>
     <h2>📦 Produits</h2>
@@ -85,6 +85,13 @@ textarea {
   </div>
   <button onclick="logout()">Se déconnecter</button>
 </div>
+
+<!-- Bouton retour liste -->
+<button id="backToList"
+        style="display:none;margin-bottom:10px"
+        onclick="showList()">
+  ⬅ Revenir à la liste
+</button>
 
 <!-- TABLE PRODUITS -->
 <table>
@@ -100,14 +107,37 @@ textarea {
 
 <script>
 const rows = document.getElementById("rows");
-const pending = {}; // buffer global des modifications
+const pending = {};
+let currentProductId = null;
 
 /* =========================
-   UTILITAIRES
+   UTILITAIRES UI
    ========================= */
 function toggleSection(id) {
   const el = document.getElementById(id);
   el.style.display = el.style.display === "none" ? "block" : "none";
+}
+
+function showDetail(productId) {
+  currentProductId = productId;
+  document.getElementById("backToList").style.display = "inline-block";
+
+  document.querySelectorAll("#rows tr.expandable").forEach(tr => {
+    if (tr.dataset.id != productId) {
+      tr.style.display = "none";
+    }
+  });
+}
+
+function showList() {
+  currentProductId = null;
+  document.getElementById("backToList").style.display = "none";
+
+  document.querySelectorAll("#rows tr").forEach(tr => {
+    tr.style.display = "";
+  });
+
+  document.querySelectorAll("tr.details").forEach(r => r.remove());
 }
 
 function markChange(key, payload) {
@@ -279,12 +309,16 @@ async function loadProduits() {
   data.forEach(p => {
     const tr = document.createElement("tr");
     tr.className = "expandable";
+    tr.dataset.id = p.id;
     tr.innerHTML = `
       <td>${p.EAN}</td>
       <td>${p.LIBELLE}</td>
       <td>${p.CODE_S}</td>
     `;
-    tr.onclick = () => toggleDetails(p.id, tr);
+    tr.onclick = () => {
+      showDetail(p.id);
+      toggleDetails(p.id, tr);
+    };
     rows.appendChild(tr);
   });
 }
