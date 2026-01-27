@@ -55,7 +55,7 @@ tr.details { background: #fafafa; }
 
 /* Actions */
 .actions {
-  margin-top: 10px;
+  margin-top: 12px;
   display: flex;
   gap: 10px;
   align-items: center;
@@ -66,15 +66,8 @@ tr.details { background: #fafafa; }
 }
 
 /* Inputs */
-textarea {
-  width: 100%;
-  min-height: 40px;
-}
-input[type="text"] {
-  width: 100%;
-  padding: 6px;
-  box-sizing: border-box;
-}
+textarea { width: 100%; min-height: 40px; }
+input[type="text"] { width: 100%; padding: 6px; box-sizing: border-box; }
 
 /* Nomenclature */
 .nomenclature-row {
@@ -82,7 +75,6 @@ input[type="text"] {
   gap: 20px;
   margin-top: 15px;
 }
-
 .nomenclature-block {
   flex: 1;
   border: 1px solid #ddd;
@@ -90,11 +82,7 @@ input[type="text"] {
   border-radius: 4px;
   background: #fafafa;
 }
-
-.nomenclature-block.full {
-  margin-bottom: 15px;
-}
-
+.nomenclature-block.full { margin-bottom: 15px; }
 .nomenclature-title {
   background: #145c7d;
   color: white;
@@ -103,15 +91,11 @@ input[type="text"] {
   font-weight: bold;
   margin-bottom: 8px;
 }
-
 .nomenclature-fields.horizontal {
   display: flex;
   gap: 10px;
 }
-
-.nomenclature-fields.horizontal input {
-  flex: 1;
-}
+.nomenclature-fields.horizontal input { flex: 1; }
 </style>
 </head>
 
@@ -121,28 +105,18 @@ input[type="text"] {
 <div class="top-bar">
   <div>
     <h2>📦 Produits</h2>
-    <button onclick="window.location.href='new_product.html'">
-      ➕ Ajouter un produit
-    </button>
+    <button onclick="window.location.href='new_product.html'">➕ Ajouter un produit</button>
   </div>
   <button onclick="logout()">Se déconnecter</button>
 </div>
 
-<!-- Bouton retour -->
 <button id="backToList"
         style="display:none;margin-bottom:10px"
-        onclick="showList()">
-  ⬅ Revenir à la liste
-</button>
+        onclick="showList()">⬅ Revenir à la liste</button>
 
-<!-- TABLE PRODUITS -->
 <table>
 <thead>
-<tr>
-  <th>EAN</th>
-  <th>LIBELLÉ</th>
-  <th>CODE_S</th>
-</tr>
+<tr><th>EAN</th><th>LIBELLÉ</th><th>CODE_S</th></tr>
 </thead>
 <tbody id="rows"></tbody>
 </table>
@@ -161,7 +135,6 @@ function toggleSection(id) {
 function showDetail(productId) {
   currentProductId = productId;
   document.getElementById("backToList").style.display = "inline-block";
-
   document.querySelectorAll("#rows tr.expandable").forEach(tr => {
     if (tr.dataset.id != productId) tr.style.display = "none";
   });
@@ -186,8 +159,8 @@ async function saveChanges() {
   if (payload.length === 0) return alert("Aucun changement");
 
   const { error } = await db
-    .from("PAF")
-    .upsert(payload, { onConflict: "produit_id,reseau_id,annee_id" });
+    .from("PRODUIT")
+    .upsert(payload, { onConflict: "id" });
 
   if (error) return alert(error.message);
 
@@ -211,7 +184,7 @@ async function toggleDetails(productId, tr) {
   }
   document.querySelectorAll("tr.details").forEach(r => r.remove());
 
-  const { data, error } = await db
+  const { data: paf } = await db
     .from("PAF")
     .select(`
       REFERENCEMENT,
@@ -223,133 +196,68 @@ async function toggleDetails(productId, tr) {
     `)
     .eq("produit_id", productId);
 
-  if (error) return alert(error.message);
+  const { data: prod } = await db
+    .from("PRODUIT")
+    .select(`
+      LIVRAISON_ENTREPOT_MONOPRIX,
+      LIVRAISON_DIRECTE_MONOPRIX,
+      LIVRAISON_ENTREPOT_FRANPRIX,
+      LIVRAISON_DIRECTE_FRANPRIX,
+      LIVRAISON_ENTREPOT_CASINO,
+      LIVRAISON_DIRECTE_CASINO
+    `)
+    .eq("id", productId)
+    .single();
 
-  const reseaux = [...new Map(
-    data.map(d => [d.reseau_id, d.RESEAU.RESEAU])
-  )].map(([id, label]) => ({ id, label }));
-
-  const annees = [...new Map(
-    data.map(d => [d.annee_id, d.ANNEE.ANNEE])
-  )].map(([id, annee]) => ({ id, annee }))
-   .sort((a,b) => b.annee - a.annee);
-
-  const refMap = {};
-  const modMap = {};
-  data.forEach(d => {
-    refMap[`${d.annee_id}_${d.reseau_id}`] = d.REFERENCEMENT;
-    modMap[`${d.annee_id}_${d.reseau_id}`] = d.MODULATION;
-  });
-
-  function buildTable(type) {
-    let html = `<table><tr><th>Année</th>`;
-    reseaux.forEach(r => html += `<th>${r.label}</th>`);
-    html += `</tr>`;
-
-    annees.forEach(a => {
-      html += `<tr><td><strong>${a.annee}</strong></td>`;
-      reseaux.forEach(r => {
-        const key = `${productId}_${a.id}_${r.id}`;
-        const mapKey = `${a.id}_${r.id}`;
-
-        if (type === "ref") {
-          const checked = refMap[mapKey] ? "checked" : "";
-          html += `
-            <td>
-              <input type="checkbox" ${checked}
-                onchange="markChange('${key}', {
-                  produit_id:${productId},
-                  annee_id:${a.id},
-                  reseau_id:${r.id},
-                  REFERENCEMENT:this.checked
-                })">
-            </td>`;
-        } else {
-          html += `
-            <td>
-              <textarea
-                oninput="markChange('${key}', {
-                  produit_id:${productId},
-                  annee_id:${a.id},
-                  reseau_id:${r.id},
-                  MODULATION:this.value
-                })">${modMap[mapKey] ?? ""}</textarea>
-            </td>`;
-        }
-      });
-      html += `</tr>`;
-    });
-    return html + `</table>`;
-  }
+  /* ===== LOGISTIQUE TABLE ===== */
+  const logistiqueTable = `
+    <table>
+      <tr><th></th><th>Monoprix</th><th>Franprix</th><th>Casino</th></tr>
+      <tr>
+        <th>Entrepôt</th>
+        <td><input type="checkbox" ${prod.LIVRAISON_ENTREPOT_MONOPRIX ? "checked" : ""}
+          onchange="markChange('lem_${productId}',{id:${productId},LIVRAISON_ENTREPOT_MONOPRIX:this.checked})"></td>
+        <td><input type="checkbox" ${prod.LIVRAISON_ENTREPOT_FRANPRIX ? "checked" : ""}
+          onchange="markChange('lef_${productId}',{id:${productId},LIVRAISON_ENTREPOT_FRANPRIX:this.checked})"></td>
+        <td><input type="checkbox" ${prod.LIVRAISON_ENTREPOT_CASINO ? "checked" : ""}
+          onchange="markChange('lec_${productId}',{id:${productId},LIVRAISON_ENTREPOT_CASINO:this.checked})"></td>
+      </tr>
+      <tr>
+        <th>Directe</th>
+        <td><input type="checkbox" ${prod.LIVRAISON_DIRECTE_MONOPRIX ? "checked" : ""}
+          onchange="markChange('ldm_${productId}',{id:${productId},LIVRAISON_DIRECTE_MONOPRIX:this.checked})"></td>
+        <td><input type="checkbox" ${prod.LIVRAISON_DIRECTE_FRANPRIX ? "checked" : ""}
+          onchange="markChange('ldf_${productId}',{id:${productId},LIVRAISON_DIRECTE_FRANPRIX:this.checked})"></td>
+        <td><input type="checkbox" ${prod.LIVRAISON_DIRECTE_CASINO ? "checked" : ""}
+          onchange="markChange('ldc_${productId}',{id:${productId},LIVRAISON_DIRECTE_CASINO:this.checked})"></td>
+      </tr>
+    </table>
+  `;
 
   const detailsRow = document.createElement("tr");
   detailsRow.className = "details";
   detailsRow.innerHTML = `
     <td colspan="3">
 
-      <!-- Référencement -->
+      <!-- Performance -->
       <div class="section">
         <div class="section-header">
-          Référencement
-          <button onclick="toggleSection('ref-${productId}')">Afficher / Réduire</button>
+          Performance
+          <button onclick="toggleSection('perf-${productId}')">Afficher / Réduire</button>
         </div>
-        <div class="section-content" id="ref-${productId}">
-          ${buildTable("ref")}
+        <div class="section-content" id="perf-${productId}">
+          <em>Section à venir</em>
         </div>
       </div>
 
-      <!-- Diffusion -->
+      <!-- Logistique -->
       <div class="section">
         <div class="section-header">
-          Diffusion
-          <button onclick="toggleSection('mod-${productId}')">Afficher / Réduire</button>
+          Logistique
+          <button onclick="toggleSection('log-${productId}')">Afficher / Réduire</button>
         </div>
-        <div class="section-content" id="mod-${productId}">
-          ${buildTable("mod")}
-        </div>
-      </div>
-
-      <!-- Nomenclature -->
-      <div class="section">
-        <div class="section-header">
-          Nomenclature
-          <button onclick="toggleSection('nom-${productId}')">Afficher / Réduire</button>
-        </div>
-        <div class="section-content" id="nom-${productId}">
-
-          <div class="nomenclature-block full">
-            <div class="nomenclature-title">CIRCANA</div>
-            <div class="nomenclature-fields horizontal">
-              <input placeholder="Marché">
-              <input placeholder="Rayon">
-              <input placeholder="Groupe famille">
-              <input placeholder="Catégorie">
-              <input placeholder="Type">
-              <input placeholder="Sous-type">
-            </div>
-          </div>
-
-          <div class="nomenclature-row">
-            <div class="nomenclature-block">
-              <div class="nomenclature-title">MONOPRIX</div>
-              <input placeholder="Rayon">
-              <input placeholder="UG">
-            </div>
-
-            <div class="nomenclature-block">
-              <div class="nomenclature-title">FRANPRIX</div>
-              <input placeholder="Univers">
-              <input placeholder="Rayon">
-              <input placeholder="Sous-groupe">
-            </div>
-
-            <div class="nomenclature-block">
-              <div class="nomenclature-title">CASINO</div>
-              <input placeholder="UE">
-              <input placeholder="Famille">
-            </div>
-          </div>
-
+        <div class="section-content" id="log-${productId}">
+          ${logistiqueTable}
         </div>
       </div>
 
@@ -365,27 +273,18 @@ async function toggleDetails(productId, tr) {
 
 /* ===== LOAD PRODUITS ===== */
 async function loadProduits() {
-  const { data, error } = await db
+  const { data } = await db
     .from("PRODUIT")
     .select('id,"EAN","LIBELLE","CODE_S"')
     .limit(20);
-
-  if (error) return alert(error.message);
 
   rows.innerHTML = "";
   data.forEach(p => {
     const tr = document.createElement("tr");
     tr.className = "expandable";
     tr.dataset.id = p.id;
-    tr.innerHTML = `
-      <td>${p.EAN}</td>
-      <td>${p.LIBELLE}</td>
-      <td>${p.CODE_S}</td>
-    `;
-    tr.onclick = () => {
-      showDetail(p.id);
-      toggleDetails(p.id, tr);
-    };
+    tr.innerHTML = `<td>${p.EAN}</td><td>${p.LIBELLE}</td><td>${p.CODE_S}</td>`;
+    tr.onclick = () => { showDetail(p.id); toggleDetails(p.id, tr); };
     rows.appendChild(tr);
   });
 }
