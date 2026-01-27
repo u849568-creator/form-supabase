@@ -110,9 +110,9 @@ input[type="text"] { width: 100%; padding: 6px; box-sizing: border-box; }
   <button onclick="logout()">Se déconnecter</button>
 </div>
 
-<button id="backToList"
-        style="display:none;margin-bottom:10px"
-        onclick="showList()">⬅ Revenir à la liste</button>
+<button id="backToList" style="display:none;margin-bottom:10px" onclick="showList()">
+  ⬅ Revenir à la liste
+</button>
 
 <table>
 <thead>
@@ -126,7 +126,7 @@ const rows = document.getElementById("rows");
 const pending = {};
 let currentProductId = null;
 
-/* ===== UI ===== */
+/* UI helpers */
 function toggleSection(id) {
   const el = document.getElementById(id);
   el.style.display = el.style.display === "none" ? "block" : "none";
@@ -153,7 +153,7 @@ function markChange(key, payload) {
     Object.keys(pending).length + " modification(s) en attente";
 }
 
-/* ===== SAVE / CANCEL ===== */
+/* Save / cancel */
 async function saveChanges() {
   const payload = Object.values(pending);
   if (payload.length === 0) return alert("Aucun changement");
@@ -175,13 +175,8 @@ function cancelChanges() {
   alert("Modifications annulées (rafraîchir pour recharger)");
 }
 
-/* ===== DETAIL PRODUIT ===== */
+/* DETAIL PRODUIT */
 async function toggleDetails(productId, tr) {
-  const next = tr.nextElementSibling;
-  if (next && next.classList.contains("details")) {
-    next.remove();
-    return;
-  }
   document.querySelectorAll("tr.details").forEach(r => r.remove());
 
   const { data: paf } = await db
@@ -209,69 +204,97 @@ async function toggleDetails(productId, tr) {
     .eq("id", productId)
     .single();
 
-  /* ===== LOGISTIQUE TABLE ===== */
-  const logistiqueTable = `
-    <table>
-      <tr><th></th><th>Monoprix</th><th>Franprix</th><th>Casino</th></tr>
-      <tr>
-        <th>Entrepôt</th>
-        <td><input type="checkbox" ${prod.LIVRAISON_ENTREPOT_MONOPRIX ? "checked" : ""}
-          onchange="markChange('lem_${productId}',{id:${productId},LIVRAISON_ENTREPOT_MONOPRIX:this.checked})"></td>
-        <td><input type="checkbox" ${prod.LIVRAISON_ENTREPOT_FRANPRIX ? "checked" : ""}
-          onchange="markChange('lef_${productId}',{id:${productId},LIVRAISON_ENTREPOT_FRANPRIX:this.checked})"></td>
-        <td><input type="checkbox" ${prod.LIVRAISON_ENTREPOT_CASINO ? "checked" : ""}
-          onchange="markChange('lec_${productId}',{id:${productId},LIVRAISON_ENTREPOT_CASINO:this.checked})"></td>
-      </tr>
-      <tr>
-        <th>Directe</th>
-        <td><input type="checkbox" ${prod.LIVRAISON_DIRECTE_MONOPRIX ? "checked" : ""}
-          onchange="markChange('ldm_${productId}',{id:${productId},LIVRAISON_DIRECTE_MONOPRIX:this.checked})"></td>
-        <td><input type="checkbox" ${prod.LIVRAISON_DIRECTE_FRANPRIX ? "checked" : ""}
-          onchange="markChange('ldf_${productId}',{id:${productId},LIVRAISON_DIRECTE_FRANPRIX:this.checked})"></td>
-        <td><input type="checkbox" ${prod.LIVRAISON_DIRECTE_CASINO ? "checked" : ""}
-          onchange="markChange('ldc_${productId}',{id:${productId},LIVRAISON_DIRECTE_CASINO:this.checked})"></td>
-      </tr>
-    </table>
-  `;
-
   const detailsRow = document.createElement("tr");
   detailsRow.className = "details";
   detailsRow.innerHTML = `
-    <td colspan="3">
+  <td colspan="3">
 
-      <!-- Performance -->
-      <div class="section">
-        <div class="section-header">
-          Performance
-          <button onclick="toggleSection('perf-${productId}')">Afficher / Réduire</button>
-        </div>
-        <div class="section-content" id="perf-${productId}">
-          <em>Section à venir</em>
-        </div>
+    <!-- Référencement -->
+    <div class="section">
+      <div class="section-header">
+        Référencement
+        <button onclick="toggleSection('ref-${productId}')">Afficher / Réduire</button>
       </div>
-
-      <!-- Logistique -->
-      <div class="section">
-        <div class="section-header">
-          Logistique
-          <button onclick="toggleSection('log-${productId}')">Afficher / Réduire</button>
-        </div>
-        <div class="section-content" id="log-${productId}">
-          ${logistiqueTable}
-        </div>
+      <div class="section-content" id="ref-${productId}">
+        <em>(contenu existant inchangé)</em>
       </div>
+    </div>
 
-      <div class="actions">
-        <span id="pending-count" class="badge"></span>
-        <button onclick="saveChanges()">Valider</button>
-        <button class="secondary" onclick="cancelChanges()">Annuler</button>
+    <!-- Diffusion -->
+    <div class="section">
+      <div class="section-header">
+        Diffusion
+        <button onclick="toggleSection('dif-${productId}')">Afficher / Réduire</button>
       </div>
+      <div class="section-content" id="dif-${productId}">
+        <em>(contenu existant inchangé)</em>
+      </div>
+    </div>
 
-    </td>`;
+    <!-- Nomenclature -->
+    <div class="section">
+      <div class="section-header">
+        Nomenclature
+        <button onclick="toggleSection('nom-${productId}')">Afficher / Réduire</button>
+      </div>
+      <div class="section-content" id="nom-${productId}">
+        <em>(contenu existant inchangé)</em>
+      </div>
+    </div>
+
+    <!-- Performance -->
+    <div class="section">
+      <div class="section-header">
+        Performance
+        <button onclick="toggleSection('perf-${productId}')">Afficher / Réduire</button>
+      </div>
+      <div class="section-content" id="perf-${productId}">
+        <em>Section à venir</em>
+      </div>
+    </div>
+
+    <!-- Logistique -->
+    <div class="section">
+      <div class="section-header">
+        Logistique
+        <button onclick="toggleSection('log-${productId}')">Afficher / Réduire</button>
+      </div>
+      <div class="section-content" id="log-${productId}">
+        <table>
+          <tr><th></th><th>Monoprix</th><th>Franprix</th><th>Casino</th></tr>
+          <tr>
+            <th>Entrepôt</th>
+            <td><input type="checkbox" ${prod.LIVRAISON_ENTREPOT_MONOPRIX?"checked":""}
+              onchange="markChange('lem_${productId}',{id:${productId},LIVRAISON_ENTREPOT_MONOPRIX:this.checked})"></td>
+            <td><input type="checkbox" ${prod.LIVRAISON_ENTREPOT_FRANPRIX?"checked":""}
+              onchange="markChange('lef_${productId}',{id:${productId},LIVRAISON_ENTREPOT_FRANPRIX:this.checked})"></td>
+            <td><input type="checkbox" ${prod.LIVRAISON_ENTREPOT_CASINO?"checked":""}
+              onchange="markChange('lec_${productId}',{id:${productId},LIVRAISON_ENTREPOT_CASINO:this.checked})"></td>
+          </tr>
+          <tr>
+            <th>Directe</th>
+            <td><input type="checkbox" ${prod.LIVRAISON_DIRECTE_MONOPRIX?"checked":""}
+              onchange="markChange('ldm_${productId}',{id:${productId},LIVRAISON_DIRECTE_MONOPRIX:this.checked})"></td>
+            <td><input type="checkbox" ${prod.LIVRAISON_DIRECTE_FRANPRIX?"checked":""}
+              onchange="markChange('ldf_${productId}',{id:${productId},LIVRAISON_DIRECTE_FRANPRIX:this.checked})"></td>
+            <td><input type="checkbox" ${prod.LIVRAISON_DIRECTE_CASINO?"checked":""}
+              onchange="markChange('ldc_${productId}',{id:${productId},LIVRAISON_DIRECTE_CASINO:this.checked})"></td>
+          </tr>
+        </table>
+      </div>
+    </div>
+
+    <div class="actions">
+      <span id="pending-count" class="badge"></span>
+      <button onclick="saveChanges()">Valider</button>
+      <button class="secondary" onclick="cancelChanges()">Annuler</button>
+    </div>
+
+  </td>`;
   tr.after(detailsRow);
 }
 
-/* ===== LOAD PRODUITS ===== */
+/* Load produits */
 async function loadProduits() {
   const { data } = await db
     .from("PRODUIT")
